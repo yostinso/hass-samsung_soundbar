@@ -12,10 +12,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 _LOGGER = logging.getLogger(__name__)
 
-VERSION = '1.0.0'
-
-DOMAIN = "samsung_soundbar"
-
 MIN_TIME_BETWEEN_SCANS = timedelta(seconds=3)
 MIN_TIME_BETWEEN_FORCED_SCANS = timedelta(seconds=3)
 
@@ -37,35 +33,26 @@ from homeassistant.const import (
   STATE_OFF
 )
 
-MULTI_ROOM_SOURCE_TYPE = [
-  'digital',
-  'hdmi1',
-  'hdmi2',
-  'optical',
-  'bt',
-  'aux',
-  'wifi'
-]
+from .const import (
+  DOMAIN,
+  DEFAULT_NAME,
+  DEFAULT_PORT,
+  DEFAULT_MAX_VOLUME,
+  DEFAULT_POWER_OPTIONS,
+  BOOL_OFF,
+  BOOL_ON,
+  TIMEOUT,
+  MULTI_ROOM_SOURCE_TYPE,
+  CONF_PORT,
+  CONF_MAX_VOLUME,
+  CONF_POWER_OPTIONS,
+)
 
-DEFAULT_NAME = 'Samsung Soundbar'
-DEFAULT_PORT = '56001'
-DEFAULT_POWER_OPTIONS = True
-DEFAULT_MAX_VOLUME = '40'
-BOOL_OFF = 'off'
-BOOL_ON = 'on'
-TIMEOUT = 2
 SUPPORT_SAMSUNG_MULTI_ROOM = (
   MediaPlayerEntityFeature.VOLUME_SET
   | MediaPlayerEntityFeature.VOLUME_MUTE
   | MediaPlayerEntityFeature.SELECT_SOURCE
 )
-
-
-MediaPlayerEntityFeature
-
-CONF_MAX_VOLUME = 'max_volume'
-CONF_PORT = 'port'
-CONF_POWER_OPTIONS = 'power_options'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
   vol.Required(CONF_HOST, default='127.0.0.1'): cv.string,
@@ -340,7 +327,7 @@ class MultiRoomDevice(MediaPlayerEntity):
       source = await self.api.get_source()
       if source:
         self._current_source = source[0]
-        self._state = STATE_PLAYING
+        self._state = STATE_ON
       else:
         self._state = STATE_OFF
       "Get Volume"
@@ -363,3 +350,18 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     session = async_get_clientsession(hass)
     api = MultiRoomApi(ip, port, session, hass)
     async_add_entities([MultiRoomDevice(name, max_volume, power_options, api, unique_id)], True)
+
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up Samsung Soundbar from a config entry."""
+    data = config_entry.data
+    ip = data[CONF_HOST]
+    port = data.get(CONF_PORT, DEFAULT_PORT)
+    name = data.get(CONF_NAME, DEFAULT_NAME)
+    max_volume = int(data.get(CONF_MAX_VOLUME, DEFAULT_MAX_VOLUME))
+    power_options = data.get(CONF_POWER_OPTIONS, DEFAULT_POWER_OPTIONS)
+    session = async_get_clientsession(hass)
+    api = MultiRoomApi(ip, port, session, hass)
+    async_add_entities(
+        [MultiRoomDevice(name, max_volume, power_options, api, config_entry.entry_id)],
+        True,
+    )

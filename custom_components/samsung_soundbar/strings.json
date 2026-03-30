@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Samsung Soundbar",
+        "data": {
+          "host": "Host",
+          "name": "Name",
+          "port": "Port",
+          "max_volume": "Max Volume",
+          "power_options": "Enable Power Controls"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the soundbar. Verify the host and port."
+    },
+    "abort": {
+      "already_configured": "This soundbar is already configured."
+    }
+  }
+}
