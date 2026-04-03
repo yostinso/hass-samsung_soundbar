@@ -1,6 +1,8 @@
 """Tests for Samsung Soundbar media player setup."""
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from custom_components.samsung_soundbar.media_player import MultiRoomApi
+
 from homeassistant.const import CONF_HOST, CONF_NAME
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -108,6 +110,30 @@ async def test_yaml_update_scales_volume_from_device(hass):
 
   assert entity._volume == 0.25
 
+
+# --- MultiRoomApi ---
+
+def _make_api(xml_response):
+  """Return a MultiRoomApi whose session returns the given XML string."""
+  mock_response = MagicMock()
+  mock_response.text = AsyncMock(return_value=xml_response)
+  session = MagicMock()
+  session.get = AsyncMock(return_value=mock_response)
+  return MultiRoomApi("192.168.1.100", "56001", session, None)
+
+
+async def test_get_speaker_name_plain(hass):
+  """get_speaker_name returns the name when it is a plain string."""
+  api = _make_api("<UIC><response result='ok'><spkname>Office Soundbar</spkname></response></UIC>")
+  result = await api.get_speaker_name()
+  assert result == ["Office Soundbar"]
+
+
+async def test_get_speaker_name_cdata(hass):
+  """get_speaker_name strips CDATA wrapper and returns the bare name."""
+  api = _make_api("<UIC><response result='ok'><spkname><![CDATA[Office Soundbar]]></spkname></response></UIC>")
+  result = await api.get_speaker_name()
+  assert result == ["Office Soundbar"]
 
 async def test_yaml_update_scales_volume_from_device_nondefault_max(hass):
   """async_update scaling works correctly with a non-default max_volume."""

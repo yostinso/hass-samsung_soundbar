@@ -76,7 +76,7 @@ class MultiRoomApi():
     url = '{0}/{1}?{2}'.format(self.endpoint, mode, query)
 
     try:
-      with async_timeout.timeout(TIMEOUT):
+      async with async_timeout.timeout(TIMEOUT):
         _LOGGER.debug("Executing: {} with cmd: {}".format(url, cmd))
         response = await self.session.get(url)
         data = await response.text()
@@ -126,7 +126,7 @@ class MultiRoomApi():
     await self._exec_set('UIC','SetVolume', 'volume', int(volume))
 
   async def get_speaker_name(self):
-    return await self._exec_get('UIC','GetSpkName', '<spkname>(.*?)</spkname>')
+    return await self._exec_get('UIC','GetSpkName', r'<spkname>(?:<!\[CDATA\[)?(.*?)(?:]]>)?</spkname>')
 
   async def get_radio_info(self):
     return await self._exec_get('CPM','GetRadioInfo', '<title>(.*?)</title>')

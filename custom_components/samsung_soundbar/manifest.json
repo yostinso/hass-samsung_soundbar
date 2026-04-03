@@ -9,5 +9,14 @@
   "requirements": [
     "xmltodict==0.11.0"
   ],
-  "config_flow": true
+  "config_flow": true,
+  "ssdp": [
+    {
+      "st": "urn:schemas-upnp-org:device:MediaRenderer:1",
+      "manufacturer": "Samsung Electronics"
+    },
+    {
+      "st": "urn:samsung.com:device:RemoteControlReceiver:1"
+    }
+  ]
 }

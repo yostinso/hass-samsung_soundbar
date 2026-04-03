@@ -2,6 +2,7 @@
 from unittest.mock import AsyncMock, patch
 
 from homeassistant import config_entries
+from homeassistant.helpers.service_info.ssdp import SsdpServiceInfo
 from homeassistant.const import CONF_HOST, CONF_NAME
 from homeassistant.data_entry_flow import FlowResultType
 
@@ -141,6 +142,93 @@ async def test_user_flow_duplicate_device(hass):
   ):
     result = await hass.config_entries.flow.async_configure(
       result["flow_id"], USER_INPUT
+    )
+
+  assert result["type"] == FlowResultType.ABORT
+  assert result["reason"] == "already_configured"
+
+
+SSDP_DISCOVERY_INFO = SsdpServiceInfo(
+  ssdp_usn="uuid:abc123",
+  ssdp_st="urn:schemas-upnp-org:device:MediaRenderer:1",
+  upnp={"manufacturer": "Samsung Electronics"},
+  ssdp_location="http://192.168.1.100:56001/description.xml",
+)
+
+
+async def test_ssdp_flow_shows_confirm(hass):
+  """Test that SSDP discovery shows the confirm form."""
+  with patch(
+    "custom_components.samsung_soundbar.config_flow.MultiRoomApi.get_speaker_name",
+    new_callable=AsyncMock,
+    return_value=["My Soundbar"],
+  ):
+    result = await hass.config_entries.flow.async_init(
+      DOMAIN,
+      context={"source": config_entries.SOURCE_SSDP},
+      data=SSDP_DISCOVERY_INFO,
+    )
+
+  assert result["type"] == FlowResultType.FORM
+  assert result["step_id"] == "confirm"
+
+
+async def test_ssdp_flow_confirm_creates_entry(hass):
+  """Test that confirming a discovered device creates a config entry."""
+  with patch(
+    "custom_components.samsung_soundbar.config_flow.MultiRoomApi.get_speaker_name",
+    new_callable=AsyncMock,
+    return_value=["My Soundbar"],
+  ):
+    result = await hass.config_entries.flow.async_init(
+      DOMAIN,
+      context={"source": config_entries.SOURCE_SSDP},
+      data=SSDP_DISCOVERY_INFO,
+    )
+
+  result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+
+  assert result["type"] == FlowResultType.CREATE_ENTRY
+  assert result["title"] == "My Soundbar"
+  assert result["data"][CONF_HOST] == "192.168.1.100"
+  assert result["data"][CONF_NAME] == "My Soundbar"
+
+
+async def test_ssdp_flow_not_samsung_soundbar(hass):
+  """Test that a non-soundbar device aborts with not_samsung_soundbar."""
+  with patch(
+    "custom_components.samsung_soundbar.config_flow.MultiRoomApi.get_speaker_name",
+    new_callable=AsyncMock,
+    return_value=None,
+  ):
+    result = await hass.config_entries.flow.async_init(
+      DOMAIN,
+      context={"source": config_entries.SOURCE_SSDP},
+      data=SSDP_DISCOVERY_INFO,
+    )
+
+  assert result["type"] == FlowResultType.ABORT
+  assert result["reason"] == "not_samsung_soundbar"
+
+
+async def test_ssdp_flow_already_configured(hass):
+  """Test that a duplicate SSDP discovery aborts with already_configured."""
+  entry = MockConfigEntry(
+    domain=DOMAIN,
+    unique_id=f"192.168.1.100:{DEFAULT_PORT}",
+    data={CONF_HOST: "192.168.1.100"},
+  )
+  entry.add_to_hass(hass)
+
+  with patch(
+    "custom_components.samsung_soundbar.config_flow.MultiRoomApi.get_speaker_name",
+    new_callable=AsyncMock,
+    return_value=["My Soundbar"],
+  ):
+    result = await hass.config_entries.flow.async_init(
+      DOMAIN,
+      context={"source": config_entries.SOURCE_SSDP},
+      data=SSDP_DISCOVERY_INFO,
     )
 
   assert result["type"] == FlowResultType.ABORT

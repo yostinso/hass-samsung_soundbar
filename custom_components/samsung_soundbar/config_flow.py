@@ -1,5 +1,7 @@
 import voluptuous as vol
+from urllib.parse import urlparse
 from homeassistant import config_entries
+from homeassistant.helpers.service_info.ssdp import SsdpServiceInfo
 from homeassistant.const import CONF_HOST, CONF_NAME
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -61,4 +63,45 @@ class SamsungSoundbarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         vol.Required(CONF_POWER_OPTIONS, default=DEFAULT_POWER_OPTIONS): cv.boolean,
       }),
       errors=errors,
+    )
+
+  async def async_step_ssdp(self, discovery_info: SsdpServiceInfo):
+    """Handle SSDP discovery."""
+    host = urlparse(discovery_info.ssdp_location).hostname
+    port = DEFAULT_PORT
+    session = async_get_clientsession(self.hass)
+    api = MultiRoomApi(host, port, session, self.hass)
+
+    speaker_name = await api.get_speaker_name()
+    if not speaker_name:
+      return self.async_abort(reason="not_samsung_soundbar")
+
+    await self.async_set_unique_id(f"{host}:{port}")
+    self._abort_if_unique_id_configured()
+
+    self._discovered_host = host
+    self._discovered_name = speaker_name[0] if isinstance(speaker_name, list) else speaker_name
+    self.context["title_placeholders"] = {"name": self._discovered_name}
+    return await self.async_step_confirm()
+
+  async def async_step_confirm(self, user_input=None):
+    """Confirm adding a discovered device."""
+    if user_input is not None:
+      return self.async_create_entry(
+        title=self._discovered_name,
+        data={
+          CONF_HOST: self._discovered_host,
+          CONF_NAME: self._discovered_name,
+          CONF_PORT: DEFAULT_PORT,
+          CONF_MAX_VOLUME: int(DEFAULT_MAX_VOLUME),
+          CONF_POWER_OPTIONS: DEFAULT_POWER_OPTIONS,
+        },
+      )
+
+    return self.async_show_form(
+      step_id="confirm",
+      description_placeholders={
+        "name": self._discovered_name,
+        "host": self._discovered_host,
+      },
     )
