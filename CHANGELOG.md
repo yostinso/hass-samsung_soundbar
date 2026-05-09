@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1 (2026-05-09)
+
+- Entity icon updated to a soundbar icon
+
 ## 1.4.0 (2026-05-09)
 
 - Soundbar is now registered as a device in the Home Assistant device registry, with manufacturer ("Samsung") and model name populated from the device
