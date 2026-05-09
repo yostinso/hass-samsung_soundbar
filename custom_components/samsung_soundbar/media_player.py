@@ -243,6 +243,10 @@ class MultiRoomDevice(MediaPlayerEntity):
 
 
   @property
+  def icon(self):
+    return "mdi:soundbar"
+
+  @property
   def name(self):
     """Return the name of the device."""
     return self._name
